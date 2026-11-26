@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LoRA Cull</title>
+<meta name="description" content="A Windows desktop app that cuts any image folder down to exactly the number of pictures you need for LoRA training, using CLIP and the LAION aesthetic predictor on your own GPU.">
+<meta property="og:title" content="LoRA Cull">
+<meta property="og:description" content="Cut any image folder down to exactly the shots worth training on.">
+<meta property="og:image" content="https://yosbelak.github.io/lora-cull-site/assets/kept.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%238b7cff'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='700' font-size='26' text-anchor='middle' fill='%230e1015'%3ELC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d12; --bg2:#10131a; --card:#161a23; --card2:#1c2130; --line:#252a37; --line2:#353c4f;
+  --text:#e8ebf2; --muted:#9299ac; --faint:#636a7e;
+  --accent:#8b7cff; --accent2:#b3a8ff; --keep:#48c78e; --drop:#f46a62; --pin:#60a5fa;
+  --dup:#f2b248; --small:#ba82ff; --off:#f06eb4; --blur:#50c8dc;
+  --radius:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font:16px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+.wrap{width:min(1160px,100% - 32px);margin-inline:auto}
+h1,h2,h3{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.02em;line-height:1.1}
+.mono{font-family:"JetBrains Mono",monospace}
+
+/* backdrop */
+.glow{position:absolute;inset:-20% -10% auto;height:900px;pointer-events:none;z-index:0;
+  background:radial-gradient(600px 380px at 20% 20%,rgba(139,124,255,.28),transparent 70%),
+             radial-gradient(520px 340px at 85% 10%,rgba(72,199,142,.14),transparent 70%),
+             radial-gradient(500px 300px at 60% 70%,rgba(244,106,98,.10),transparent 70%)}
+.grid-bg{position:absolute;inset:0;height:980px;z-index:0;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px;mask-image:radial-gradient(ellipse at 50% 0%,#000 30%,transparent 75%)}
+
+/* nav */
+nav{position:sticky;top:0;z-index:20;backdrop-filter:blur(14px);background:rgba(11,13,18,.72);border-bottom:1px solid rgba(37,42,55,.6)}
+nav .wrap{display:flex;align-items:center;gap:16px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font:600 18px "Space Grotesk"}
+.logo b{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--accent);color:var(--bg);font-size:13px}
+nav .links{margin-left:auto;display:flex;gap:26px;color:var(--muted);font-size:14.5px}
+nav .links a:hover{color:var(--text)}
+@media(max-width:700px){nav .links{display:none}}
+
+/* hero */
+header{position:relative;padding:88px 0 40px;text-align:center}
+header>*{position:relative;z-index:1}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;border:1px solid var(--line2);border-radius:99px;background:rgba(22,26,35,.7);font-size:13.5px;color:var(--muted)}
+.eyebrow span{padding:2px 9px;border-radius:99px;background:rgba(139,124,255,.18);color:var(--accent2);font-weight:600;font-size:12px}
+header h1{font-size:clamp(40px,7vw,80px);margin:26px auto 20px;max-width:900px}
+.grad{background:linear-gradient(100deg,#fff 10%,var(--accent2) 45%,var(--keep) 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+header p.lead{font-size:clamp(17px,2vw,20px);color:var(--muted);max-width:640px;margin:0 auto}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+.btn{display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 22px;border-radius:12px;font-weight:600;font-size:15px;transition:.2s}
+.btn.primary{background:var(--accent);color:#0b0b14;box-shadow:0 10px 30px -8px rgba(139,124,255,.6)}
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 16px 36px -8px rgba(139,124,255,.75)}
+.btn.ghost{border:1px solid var(--line2);color:var(--text);background:rgba(22,26,35,.6)}
+.btn.ghost:hover{border-color:var(--accent)}
+.meta{margin-top:18px;color:var(--faint);font-size:13.5px}
+
+/* app window */
+.window{position:relative;margin:64px auto 0;border-radius:16px;border:1px solid var(--line2);background:var(--bg2);overflow:hidden;
+  box-shadow:0 50px 120px -30px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02),0 0 120px -20px rgba(139,124,255,.35)}
+.window .bar{display:flex;align-items:center;gap:8px;height:38px;padding:0 14px;border-bottom:1px solid var(--line);background:#12151d}
+.window .bar i{width:11px;height:11px;border-radius:50%;background:#2b3040}
+.window .bar span{margin-left:10px;font-size:12.5px;color:var(--faint)}
+.window img{width:100%}
+.hero-shot{transform:perspective(1800px) rotateX(8deg);transform-origin:50% 0;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.hero-shot.flat{transform:none}
+
+/* numbers */
+.numbers{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:56px}
+.num{padding:22px;border:1px solid var(--line);border-radius:var(--radius);background:linear-gradient(180deg,var(--card),rgba(22,26,35,.4))}
+.num b{display:block;font:600 34px "Space Grotesk";letter-spacing:-.03em}
+.num small{color:var(--muted);font-size:14px}
+@media(max-width:800px){.numbers{grid-template-columns:repeat(2,1fr)}}
+
+section{padding:110px 0 0}
+.kicker{color:var(--accent2);font:500 13px "JetBrains Mono";letter-spacing:.08em;text-transform:uppercase}
+section h2{font-size:clamp(30px,4.4vw,48px);margin:12px 0 14px;max-width:760px}
+section p.sub{color:var(--muted);font-size:18px;max-width:640px}
+
+/* pipeline */
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:44px;counter-reset:s}
+.stage{position:relative;padding:24px;border-radius:var(--radius);border:1px solid var(--line);background:var(--card);overflow:hidden}
+.stage::before{counter-increment:s;content:"0" counter(s);position:absolute;right:18px;top:14px;font:600 44px "Space Grotesk";color:rgba(255,255,255,.04)}
+.stage .dot{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:18px}
+.stage h3{font-size:19px;margin-bottom:8px}
+.stage p{color:var(--muted);font-size:14.5px}
+.stage .bar2{position:absolute;left:0;bottom:0;height:3px;width:100%}
+@media(max-width:900px){.pipe{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.pipe{grid-template-columns:1fr}}
+
+/* funnel */
+.funnel{margin-top:30px;padding:26px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.funnel .row{display:grid;grid-template-columns:150px 1fr 56px;align-items:center;gap:16px;padding:7px 0;font-size:14.5px}
+.funnel .row span:first-child{color:var(--muted)}
+.track{height:12px;border-radius:99px;background:var(--card2);overflow:hidden}
+.track i{display:block;height:100%;border-radius:99px;width:0;transition:width 1.2s cubic-bezier(.2,.7,.2,1)}
+.funnel .row b{text-align:right;font:600 15px "JetBrains Mono"}
+@media(max-width:560px){.funnel .row{grid-template-columns:96px 1fr 44px}}
+
+/* split feature */
+.split{display:grid;grid-template-columns:1fr 1.25fr;gap:54px;align-items:center;margin-top:20px}
+.split.rev{grid-template-columns:1.25fr 1fr}
+.split.rev .txt{order:2}
+.split ul{list-style:none;margin-top:24px;display:grid;gap:14px}
+.split li{display:flex;gap:12px;color:var(--muted)}
+.split li b{color:var(--text);font-weight:600}
+.split li::before{content:"";flex:0 0 8px;height:8px;margin-top:9px;border-radius:50%;background:var(--accent)}
+.shot{border-radius:14px;border:1px solid var(--line2);overflow:hidden;box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
+@media(max-width:900px){.split,.split.rev{grid-template-columns:1fr}.split.rev .txt{order:0}}
+
+/* features */
+.feats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:44px}
+.feat{padding:26px;border-radius:var(--radius);border:1px solid var(--line);background:var(--card);transition:.25s}
+.feat:hover{border-color:var(--line2);transform:translateY(-3px);background:var(--card2)}
+.feat .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:18px;background:rgba(139,124,255,.14);color:var(--accent2)}
+.feat .ic svg{width:21px;height:21px}
+.feat h3{font-size:18px;margin-bottom:8px}
+.feat p{color:var(--muted);font-size:14.5px}
+@media(max-width:900px){.feats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.feats{grid-template-columns:1fr}}
+
+/* models */
+.models{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:40px}
+.model{padding:26px;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(135deg,var(--card),var(--bg2))}
+.model .tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;margin-bottom:14px}
+.model h3{font-size:20px;margin-bottom:8px}
+.model p{color:var(--muted);font-size:14.5px}
+.model a{color:var(--accent2);border-bottom:1px solid rgba(179,168,255,.3)}
+@media(max-width:760px){.models{grid-template-columns:1fr}}
+
+/* steps / cta */
+.final{margin:120px 0 0;padding:64px 32px;border-radius:28px;text-align:center;border:1px solid var(--line2);position:relative;overflow:hidden;
+  background:radial-gradient(500px 240px at 50% 0%,rgba(139,124,255,.25),transparent 70%),var(--card)}
+.final h2{margin:0 auto 14px;max-width:700px}
+.final p{color:var(--muted);max-width:560px;margin:0 auto}
+.code{display:inline-flex;align-items:center;gap:12px;margin-top:28px;padding:14px 20px;border-radius:12px;border:1px solid var(--line2);background:#0d0f15;font:500 14px "JetBrains Mono";color:var(--accent2)}
+.code span{color:var(--faint)}
+footer{padding:56px 0 48px;color:var(--faint);font-size:13.5px;text-align:center}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.hero-shot{transform:none}.track i{transition:none}}
+</style>
+</head>
+<body>
+<div class="glow"></div><div class="grid-bg"></div>
+
+<nav><div class="wrap">
+  <a class="logo" href="#"><b>LC</b>LoRA Cull</a>
+  <div class="links"><a href="#how">How it decides</a><a href="#review">Review</a><a href="#features">Features</a><a href="#models">Models</a></div>
+</div></nav>
+
+<header class="wrap">
+  <div class="eyebrow"><span>Windows</span> Rust · runs on your own GPU · free</div>
+  <h1>Cut any image folder down to <span class="grad">exactly the shots worth training on.</span></h1>
+  <p class="lead">Point LoRA Cull at a folder, say how many images you need, and it uses CLIP and the LAION aesthetic predictor to throw out duplicates, blurry, tiny and off-topic pictures, keeping a varied, high-quality set.</p>
+  <div class="cta">
+    <a class="btn primary" href="#how">See how it decides
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></a>
+    <a class="btn ghost" href="#review">Look at the app</a>
+  </div>
+  <div class="meta">Nothing is deleted. Every discard can be undone.</div>
+
+  <div class="window hero-shot reveal" id="hero">
+    <div class="bar"><i></i><i></i><i></i><span>LoRA Cull</span></div>
+    <img src="assets/kept.jpg" alt="LoRA Cull showing the 50 kept images ranked best first, with stat cards and a breakdown of discard reasons" width="2880" height="1800">
+  </div>
+
+  <div class="numbers">
+    <div class="num reveal"><b id="n-found">82</b><small>images in the demo folder</small></div>
+    <div class="num reveal"><b style="color:var(--keep)">50</b><small>kept, because that's what was asked</small></div>
+    <div class="num reveal"><b style="color:var(--drop)" id="n-drop">32</b><small>set aside, each with a reason</small></div>
+    <div class="num reveal"><b style="color:var(--accent2)">~15&thinsp;s</b><small>to score them on an RTX 3090</small></div>
+  </div>
+</header>
+
+<section id="how" class="wrap">
+  <div class="kicker">How it decides</div>
+  <h2>Four passes, and it stops the moment your number is reached.</h2>
+  <p class="sub">Discards happen in a fixed order, so the cheapest wins come first: broken files and duplicates go before any picture is judged on taste.</p>
+  <div class="pipe">
+    <div class="stage reveal"><div class="dot" style="background:rgba(130,136,150,.18);color:#a3a9b8">⨯</div><h3>Unreadable &amp; removed</h3><p>Files that won't decode, plus anything you clicked out by hand.</p><div class="bar2" style="background:#828896"></div></div>
+    <div class="stage reveal"><div class="dot" style="background:rgba(242,178,72,.16);color:var(--dup)">≈</div><h3>Near-duplicates</h3><p>Two shots that CLIP rates 95%+ alike count as one. The weaker copy goes.</p><div class="bar2" style="background:var(--dup)"></div></div>
+    <div class="stage reveal"><div class="dot" style="background:rgba(80,200,220,.16);color:var(--blur)">◐</div><h3>Small, blurry, off-topic</h3><p>Under 512&thinsp;px, soft focus, or far from what the rest of the folder is about.</p><div class="bar2" style="background:linear-gradient(90deg,var(--small),var(--blur),var(--off))"></div></div>
+    <div class="stage reveal"><div class="dot" style="background:rgba(139,124,255,.18);color:var(--accent2)">★</div><h3>Rank with variety</h3><p>Lowest aesthetic score goes next, with a penalty for looking like pictures already kept.</p><div class="bar2" style="background:var(--accent)"></div></div>
+  </div>
+
+  <div class="funnel reveal" id="funnel">
+    <div class="row"><span>Started with</span><div class="track"><i data-w="100" style="background:var(--line2)"></i></div><b>82</b></div>
+    <div class="row"><span>Near-duplicate</span><div class="track"><i data-w="24.4" style="background:var(--dup)"></i></div><b>−20</b></div>
+    <div class="row"><span>Too small</span><div class="track"><i data-w="2.4" style="background:var(--small)"></i></div><b>−2</b></div>
+    <div class="row"><span>Off-topic</span><div class="track"><i data-w="4.9" style="background:var(--off)"></i></div><b>−4</b></div>
+    <div class="row"><span>Blurry</span><div class="track"><i data-w="4.9" style="background:var(--blur)"></i></div><b>−4</b></div>
+    <div class="row"><span>Lower rank</span><div class="track"><i data-w="2.4" style="background:var(--drop)"></i></div><b>−2</b></div>
+    <div class="row"><span style="color:var(--keep)">Kept</span><div class="track"><i data-w="61" style="background:var(--keep)"></i></div><b style="color:var(--keep)">50</b></div>
+  </div>
+</section>
+
+<section id="review" class="wrap">
+  <div class="split">
+    <div class="txt reveal">
+      <div class="kicker">You have the final say</div>
+      <h2>Review it like a contact sheet.</h2>
+      <p class="sub">Kept pictures are ranked best first, with their aesthetic score on the corner.</p>
+      <ul>
+        <li><span><b>Click to swap.</b> Throw out a kept picture and the next-best one takes its place. The count never drifts from your number.</span></li>
+        <li><span><b>Right-click to undo</b> any choice you made.</span></li>
+        <li><span><b>Sliders apply instantly</b>: duplicate threshold, variety, sharpness, minimum size. No re-analysis.</span></li>
+      </ul>
+    </div>
+    <div class="shot reveal"><img src="assets/hover.jpg" alt="Hovering a kept picture shows Click to discard" loading="lazy"></div>
+  </div>
+
+  <div class="split rev" style="margin-top:90px">
+    <div class="txt reveal">
+      <div class="kicker">Every discard has a reason</div>
+      <h2>See exactly why each picture missed the cut.</h2>
+      <p class="sub">The Discarded tab sorts by "closest to making it" and filters by reason, so a near-miss is one click from coming back.</p>
+      <ul>
+        <li><span><b>Colour-coded reasons</b>: duplicate (with % similarity), too small, blurry, off-topic, lower rank.</span></li>
+        <li><span><b>Moves, never deletes.</b> Discards and their .txt captions go to <span class="mono">_discarded\</span>, and Undo puts them all back.</span></li>
+        <li><span><b>CSV report</b> with every score, size and reason.</span></li>
+      </ul>
+    </div>
+    <div class="shot reveal"><img src="assets/discarded.jpg" alt="The Discarded tab with reason filter chips" loading="lazy"></div>
+  </div>
+</section>
+
+<section id="features" class="wrap">
+  <div class="kicker">Built for dataset prep</div>
+  <h2>Small app, sharp edges filed off.</h2>
+  <div class="feats">
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".5"/></svg></div><h3>Exactly your number</h3><p>Type any count or tap a preset: 20, 30, 50, 100, 150, 200, 300. It shows how many the folder holds as you go.</p></div>
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M7 7V5h10v2M8 12h8"/></svg></div><h3>Any GPU, no CUDA</h3><p>ONNX Runtime with DirectML runs on NVIDIA, AMD or Intel cards and falls back to the CPU when it has to.</p></div>
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div><h3>Fully undoable</h3><p>A move manifest records every file, so Undo restores the folder exactly as it was, even after a restart.</p></div>
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h6"/><path d="m16 16 2 2 4-4"/></svg></div><h3>Captions travel along</h3><p>.txt, .caption, .json and .npz sidecars move with their image, so trainer folders stay consistent.</p></div>
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3 4 7v5c0 5 3.5 8 8 9 4.5-1 8-4 8-9V7z"/></svg></div><h3>Offline &amp; private</h3><p>After a one-time model download, nothing leaves your machine. No account, no upload.</p></div>
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></div><h3>Drag, drop, done</h3><p>Drop a folder on the window, press Analyze, review, move. A native Rust app that opens instantly.</p></div>
+  </div>
+</section>
+
+<section id="models" class="wrap">
+  <div class="kicker">The AI inside</div>
+  <h2>Two open models, both from the community.</h2>
+  <div class="models">
+    <div class="model reveal"><span class="tag" style="background:rgba(96,165,250,.15);color:var(--pin)">Understanding</span><h3>CLIP ViT-L/14</h3><p>OpenAI's image encoder turns every picture into a 768-number fingerprint. Comparing fingerprints finds duplicates, off-topic shots and clusters of look-alikes. ONNX export by <a href="https://huggingface.co/Xenova/clip-vit-large-patch14">Xenova</a>.</p></div>
+    <div class="model reveal"><span class="tag" style="background:rgba(72,199,142,.15);color:var(--keep)">Taste</span><h3>LAION aesthetic predictor</h3><p>A small network trained on human ratings scores each picture from roughly 1 to 10. From <a href="https://github.com/christophschuhmann/improved-aesthetic-predictor">improved-aesthetic-predictor</a>, ONNX by <a href="https://huggingface.co/haor/aesthetics">haor</a>.</p></div>
+  </div>
+
+  <div class="final reveal">
+    <div class="kicker">Get started</div>
+    <h2>Four steps from a messy folder to a clean dataset.</h2>
+    <p>Open the app, drop your folder in, set how many images you need, press Analyze. Review, then move the extras aside.</p>
+    <div class="code"><span>&gt;</span> Run LoRA Cull.bat</div>
+  </div>
+</section>
+
+<footer class="wrap">LoRA Cull · built with Rust, egui and ONNX Runtime · demo images are AI-generated</footer>
+
+<script>
+// Reveal on scroll, flatten the hero screenshot, and grow the funnel bars once visible.
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add('in');
+  if (e.target.id === 'hero') e.target.classList.add('flat');
+  if (e.target.id === 'funnel') e.target.querySelectorAll('.track i').forEach(i => i.style.width = i.dataset.w + '%');
+  io.unobserve(e.target);
+}), {threshold: .18});
+document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
