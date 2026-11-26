@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LoRA Cull</title>
-<meta name="description" content="A Windows desktop app that cuts any image folder down to exactly the number of pictures you need for LoRA training, using CLIP and the LAION aesthetic predictor on your own GPU.">
+<meta name="description" content="A Windows desktop app that cuts any image folder down to exactly the number of pictures you need for LoRA training, and sorts, de-duplicates and tidies photo libraries, all with local AI on your own GPU.">
 <meta property="og:title" content="LoRA Cull">
-<meta property="og:description" content="Cut any image folder down to exactly the shots worth training on.">
+<meta property="og:description" content="Cut any image folder down to exactly the shots worth training on, then sort and tidy the rest. All local.">
 <meta property="og:image" content="https://yosbelak.github.io/lora-cull-site/assets/kept.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%238b7cff'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='700' font-size='26' text-anchor='middle' fill='%230e1015'%3ELC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -116,6 +116,17 @@ section p.sub{color:var(--muted);font-size:18px;max-width:640px}
 .shot{border-radius:14px;border:1px solid var(--line2);overflow:hidden;box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
 @media(max-width:900px){.split,.split.rev{grid-template-columns:1fr}.split.rev .txt{order:0}}
 
+/* curation */
+.tools{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.tool{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:14.5px}
+.tool i{width:9px;height:9px;border-radius:50%}
+.tool small{color:var(--faint);font-size:13px}
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:40px}
+.flow div{padding:20px 22px;border-radius:var(--radius);border:1px solid var(--line);background:var(--card)}
+.flow b{display:block;font:500 12px "JetBrains Mono";letter-spacing:.08em;margin-bottom:6px}
+.flow p{color:var(--muted);font-size:14.5px}
+@media(max-width:760px){.flow{grid-template-columns:1fr}}
+
 /* features */
 .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:44px}
 .feat{padding:26px;border-radius:var(--radius);border:1px solid var(--line);background:var(--card);transition:.25s}
@@ -156,13 +167,13 @@ footer{padding:56px 0 48px;color:var(--faint);font-size:13.5px;text-align:center
 
 <nav><div class="wrap">
   <a class="logo" href="#"><b>LC</b>LoRA Cull</a>
-  <div class="links"><a href="#how">How it decides</a><a href="#review">Review</a><a href="#features">Features</a><a href="#models">Models</a></div>
+  <div class="links"><a href="#how">How it decides</a><a href="#review">Review</a><a href="#curate">Curation tools</a><a href="#features">Features</a><a href="#models">Models</a></div>
 </div></nav>
 
 <header class="wrap">
-  <div class="eyebrow"><span>Windows</span> Rust · runs on your own GPU · free</div>
+  <div class="eyebrow"><span>New</span> Sort, Clean up and History tools · HEIC support</div>
   <h1>Cut any image folder down to <span class="grad">exactly the shots worth training on.</span></h1>
-  <p class="lead">Point LoRA Cull at a folder, say how many images you need, and it uses CLIP and the LAION aesthetic predictor to throw out duplicates, blurry, tiny and off-topic pictures, keeping a varied, high-quality set.</p>
+  <p class="lead">Point LoRA Cull at a folder, say how many images you need, and it uses CLIP and the LAION aesthetic predictor to throw out duplicates, blurry, tiny and off-topic pictures, keeping a varied, high-quality set. Then sort, de-duplicate and tidy whole photo libraries with the same local AI.</p>
   <div class="cta">
     <a class="btn primary" href="#how">See how it decides
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></a>
@@ -235,6 +246,60 @@ footer{padding:56px 0 48px;color:var(--faint);font-size:13.5px;text-align:center
   </div>
 </section>
 
+<section id="curate" class="wrap">
+  <div class="kicker">Curation tools</div>
+  <h2>A whole photo-library toolkit, not just a cull.</h2>
+  <p class="sub">The left rail adds four more tools for the folders around your dataset. Every one shows a preview first, applies only when you say so, and can be undone later.</p>
+  <div class="tools">
+    <div class="tool reveal"><i style="background:var(--accent)"></i>Cull <small>exactly N training images</small></div>
+    <div class="tool reveal"><i style="background:var(--pin)"></i>Sort <small>date · orientation · AI vs real · NSFW · skin %</small></div>
+    <div class="tool reveal"><i style="background:var(--keep)"></i>Clean up <small>duplicates · broken files · HEIC to JPG · flatten · empty folders</small></div>
+    <div class="tool reveal"><i style="background:var(--dup)"></i>People <small>face groups you name once</small></div>
+    <div class="tool reveal"><i style="background:var(--off)"></i>History <small>every run, with Undo and trash</small></div>
+  </div>
+
+  <div class="flow">
+    <div class="reveal"><b style="color:var(--accent2)">1 · PREVIEW</b><p>See every destination folder and how many files would land there. Nothing moves yet.</p></div>
+    <div class="reveal"><b style="color:var(--keep)">2 · APPLY</b><p>"Apply this plan" runs exactly what you saw. If the folder changed meanwhile, it asks you to preview again.</p></div>
+    <div class="reveal"><b style="color:var(--dup)">3 · UNDO</b><p>Each run is journaled. Undo it from the result card now, or from History next week.</p></div>
+  </div>
+
+  <div class="split" style="margin-top:80px">
+    <div class="txt reveal">
+      <div class="kicker">Sort</div>
+      <h2>File a folder by date, orientation or content.</h2>
+      <p class="sub">Date uses EXIF capture time, then dates in filenames, then file dates. AI vs real looks for generator fingerprints, and NSFW and skin % run local classifiers.</p>
+      <ul>
+        <li><span><b>Destination bars</b> show where every file will go before you commit.</span></li>
+        <li><span><b>HEIC and HEIF</b> photos from iPhones are read natively, and Clean up can convert them to JPG.</span></li>
+      </ul>
+    </div>
+    <div class="shot reveal"><img src="assets/sort.jpg" alt="Sort tool showing an orientation preview: 33 square, 27 landscape, 22 portrait" loading="lazy"></div>
+  </div>
+
+  <div class="split rev" style="margin-top:90px">
+    <div class="txt reveal">
+      <div class="kicker">Clean up</div>
+      <h2>Review duplicates side by side.</h2>
+      <p class="sub">Perceptual hashing groups near-identical photos. The largest file in each group is kept by default; click any picture to flip it before the extras move to <span class="mono">_duplicates\</span>.</p>
+      <ul>
+        <li><span><b>Broken images</b> are found and set aside before they crash a trainer.</span></li>
+        <li><span><b>Flatten, group by count, file counts, delete empty folders</b>: the chores between datasets.</span></li>
+      </ul>
+    </div>
+    <div class="shot reveal"><img src="assets/duplicates.jpg" alt="Clean up tool showing duplicate groups with keep and duplicate labels" loading="lazy"></div>
+  </div>
+
+  <div class="split" style="margin-top:90px">
+    <div class="txt reveal">
+      <div class="kicker">History</div>
+      <h2>Every change is a run you can take back.</h2>
+      <p class="sub">Runs are listed newest first for the folder and its subfolders, and runs made by the older Python Image Curator show up too. Trashed files stay recoverable until you empty the trash.</p>
+    </div>
+    <div class="shot reveal"><img src="assets/done.jpg" alt="A finished date sort: 82 changes made, with an Undo this run button" loading="lazy"></div>
+  </div>
+</section>
+
 <section id="features" class="wrap">
   <div class="kicker">Built for dataset prep</div>
   <h2>Small app, sharp edges filed off.</h2>
@@ -244,17 +309,18 @@ footer{padding:56px 0 48px;color:var(--faint);font-size:13.5px;text-align:center
     <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div><h3>Fully undoable</h3><p>A move manifest records every file, so Undo restores the folder exactly as it was, even after a restart.</p></div>
     <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h10M4 18h6"/><path d="m16 16 2 2 4-4"/></svg></div><h3>Captions travel along</h3><p>.txt, .caption, .json and .npz sidecars move with their image, so trainer folders stay consistent.</p></div>
     <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3 4 7v5c0 5 3.5 8 8 9 4.5-1 8-4 8-9V7z"/></svg></div><h3>Offline &amp; private</h3><p>After a one-time model download, nothing leaves your machine. No account, no upload.</p></div>
-    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></div><h3>Drag, drop, done</h3><p>Drop a folder on the window, press Analyze, review, move. A native Rust app that opens instantly.</p></div>
+    <div class="feat reveal"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></div><h3>HEIC ready</h3><p>iPhone HEIC and HEIF photos are decoded natively in every tool, and can be converted to JPG in one run.</p></div>
   </div>
 </section>
 
 <section id="models" class="wrap">
   <div class="kicker">The AI inside</div>
-  <h2>Two open models, both from the community.</h2>
+  <h2>Open models, all running locally.</h2>
   <div class="models">
     <div class="model reveal"><span class="tag" style="background:rgba(96,165,250,.15);color:var(--pin)">Understanding</span><h3>CLIP ViT-L/14</h3><p>OpenAI's image encoder turns every picture into a 768-number fingerprint. Comparing fingerprints finds duplicates, off-topic shots and clusters of look-alikes. ONNX export by <a href="https://huggingface.co/Xenova/clip-vit-large-patch14">Xenova</a>.</p></div>
     <div class="model reveal"><span class="tag" style="background:rgba(72,199,142,.15);color:var(--keep)">Taste</span><h3>LAION aesthetic predictor</h3><p>A small network trained on human ratings scores each picture from roughly 1 to 10. From <a href="https://github.com/christophschuhmann/improved-aesthetic-predictor">improved-aesthetic-predictor</a>, ONNX by <a href="https://huggingface.co/haor/aesthetics">haor</a>.</p></div>
   </div>
+  <p class="sub" style="margin-top:18px;font-size:15px">The curation tools add a YOLOv11 face detector, ArcFace face embeddings, a SegFormer skin segmenter and a FocalNet NSFW classifier, all as ONNX on the same GPU path.</p>
 
   <div class="final reveal">
     <div class="kicker">Get started</div>
