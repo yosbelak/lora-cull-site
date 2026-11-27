@@ -171,7 +171,7 @@ footer{padding:56px 0 48px;color:var(--faint);font-size:13.5px;text-align:center
 </div></nav>
 
 <header class="wrap">
-  <div class="eyebrow"><span>New</span> Liquid Glass look · Sort, Clean up and History tools · HEIC</div>
+  <div class="eyebrow"><span>New</span> Liquid Glass look · Sort, Clean up, People and History tools · HEIC</div>
   <h1>Cut any image folder down to <span class="grad">exactly the shots worth training on.</span></h1>
   <p class="lead">Point LoRA Cull at a folder, say how many images you need, and it uses CLIP and the LAION aesthetic predictor to throw out duplicates, blurry, tiny and off-topic pictures, keeping a varied, high-quality set. Then sort, de-duplicate and tidy whole photo libraries with the same local AI.</p>
   <div class="cta">
@@ -291,6 +291,19 @@ footer{padding:56px 0 48px;color:var(--faint);font-size:13.5px;text-align:center
   </div>
 
   <div class="split" style="margin-top:90px">
+    <div class="txt reveal">
+      <div class="kicker">People</div>
+      <h2>Name a face once.</h2>
+      <p class="sub">YOLO finds the faces and ArcFace groups them by identity. Type a name on each group and its photos are filed under <span class="mono">people\&lt;Name&gt;\</span>; next time, known faces come back already recognised.</p>
+      <ul>
+        <li><span><b>Same name on two groups</b> merges them, and a blank name skips a group.</span></li>
+        <li><span><b>Face vectors never leave the computer.</b> They live in your local app data.</span></li>
+      </ul>
+    </div>
+    <div class="shot reveal"><img src="assets/people.jpg" alt="People tool with four named face groups of five photos each (generated, fictional people)" loading="lazy"></div>
+  </div>
+
+  <div class="split rev" style="margin-top:90px">
     <div class="txt reveal">
       <div class="kicker">History</div>
       <h2>Every change is a run you can take back.</h2>
